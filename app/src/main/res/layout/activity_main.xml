@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1E1F24">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Заголовок -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ozon Job Catcher"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="#005BFF" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Автоматический перехват горячих смен"
+            android:textSize="13sp"
+            android:textColor="#AAAAAA"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Статус службы -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardBackgroundColor="#2A2B32">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:id="@+id/tvStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Статус: Служба не включена"
+                    android:textColor="#FF5252"
+                    android:textStyle="bold"
+                    android:textSize="15sp"
+                    android:layout_marginBottom="8dp" />
+
+                <Button
+                    android:id="@+id/btnEnableAccessibility"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Включить в Спецвозможностях"
+                    android:backgroundTint="#005BFF"
+                    android:textColor="#FFFFFF" />
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Настройки фильтров -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardBackgroundColor="#2A2B32">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <!-- Склад -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Склад (из шапки Ozon Job):"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="4dp" />
+
+                <EditText
+                    android:id="@+id/etWarehouse"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Воронеж 2"
+                    android:textColor="#FFFFFF"
+                    android:textColorHint="#777777"
+                    android:hint="Например: Воронеж 2 (пусто = любой)"
+                    android:background="#373842"
+                    android:padding="10dp"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Фильтр только с повышенным тарифом -->
+                <CheckBox
+                    android:id="@+id/cbOnlyHotTariff"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="⚡ Только с повышенным тарифом (Тариф +%)"
+                    android:textColor="#00E676"
+                    android:textStyle="bold"
+                    android:checked="false"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Дата -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Дата смены:"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="4dp" />
+
+                <Spinner
+                    android:id="@+id/spDateChoice"
+                    android:layout_width="match_parent"
+                    android:layout_height="45dp"
+                    android:background="#373842"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Длительность -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Длительность смены:"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="4dp" />
+
+                <Spinner
+                    android:id="@+id/spDuration"
+                    android:layout_width="match_parent"
+                    android:layout_height="45dp"
+                    android:background="#373842"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Время суток -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Время суток:"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="4dp" />
+
+                <Spinner
+                    android:id="@+id/spTimeOfDay"
+                    android:layout_width="match_parent"
+                    android:layout_height="45dp"
+                    android:background="#373842"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Место работы (Операции со скриншота) -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Место работы (Операции):"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="2dp" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Если ничего не выбрано — ловит любую операцию"
+                    android:textSize="12sp"
+                    android:textColor="#9E9E9E"
+                    android:layout_marginBottom="8dp" />
+
+                <CheckBox
+                    android:id="@+id/cbOpPlacement"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E0E0E0"
+                    android:text="Размещение" />
+
+                <CheckBox
+                    android:id="@+id/cbOpPicking"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E0E0E0"
+                    android:text="Подбор" />
+
+                <CheckBox
+                    android:id="@+id/cbOpReceiving"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E0E0E0"
+                    android:text="Приемка" />
+
+                <CheckBox
+                    android:id="@+id/cbOpPacking"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E0E0E0"
+                    android:text="Упаковка" />
+
+                <CheckBox
+                    android:id="@+id/cbOpSortingBig"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E0E0E0"
+                    android:text="Сортировка крупного товара" />
+
+                <CheckBox
+                    android:id="@+id/cbOpSortingSmall"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E0E0E0"
+                    android:text="Сортировка мелкого товара" />
+
+                <CheckBox
+                    android:id="@+id/cbOpReturns"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E0E0E0"
+                    android:text="Возвраты" />
+
+                <CheckBox
+                    android:id="@+id/cbOpReturnsPicking"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E0E0E0"
+                    android:text="Подбор возвратов" />
+
+                <CheckBox
+                    android:id="@+id/cbOpConsolidation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="#E0E0E0"
+                    android:text="Консолидация"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Минимальная ставка -->
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Минимальная выплата (₽):"
+                    android:textColor="#FFFFFF"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="4dp" />
+
+                <EditText
+                    android:id="@+id/etMinPrice"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:text="8000"
+                    android:textColor="#FFFFFF"
+                    android:background="#373842"
+                    android:padding="10dp" />
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Авто-обновление -->
+        <CheckBox
+            android:id="@+id/cbAutoSwipe"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Автоматический свайп вниз для обновления (каждые 1.5 сек)"
+            android:textColor="#B0BEC5"
+            android:checked="true"
+            android:layout_marginBottom="16dp" />
+
+        <!-- Кнопка действия -->
+        <Button
+            android:id="@+id/btnToggleCatching"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="ЗАПУСТИТЬ ЛОВЛЮ"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:backgroundTint="#00C853"
+            android:textColor="#FFFFFF" />
+
+    </LinearLayout>
+</ScrollView>
