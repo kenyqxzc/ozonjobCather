@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Ozon Job Catcher</string>
+    <string name="accessibility_service_description">Автоматический ассистент для обнаружения и бронирования смен в приложении Ozon Job.</string>
+</resources>
