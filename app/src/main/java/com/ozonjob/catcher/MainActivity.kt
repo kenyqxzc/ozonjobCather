@@ -6,32 +6,40 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.provider.Settings
+import android.view.View
 import android.view.accessibility.AccessibilityManager
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
+import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
 
+    private lateinit var statusIndicatorDot: View
     private lateinit var tvStatus: TextView
     private lateinit var btnEnableAccessibility: Button
     private lateinit var etWarehouse: EditText
-    private lateinit var cbOnlyHotTariff: CheckBox
+    private lateinit var cbOnlyHotTariff: SwitchCompat
     private lateinit var spDateChoice: Spinner
     private lateinit var spDuration: Spinner
     private lateinit var spTimeOfDay: Spinner
     
-    // Операции
-    private lateinit var cbOpPlacement: CheckBox
+    // Операции со склада
     private lateinit var cbOpPicking: CheckBox
+    private lateinit var cbOpPlacement: CheckBox
     private lateinit var cbOpReceiving: CheckBox
     private lateinit var cbOpPacking: CheckBox
-    private lateinit var cbOpSortingBig: CheckBox
     private lateinit var cbOpSortingSmall: CheckBox
+    private lateinit var cbOpSortingBig: CheckBox
     private lateinit var cbOpReturns: CheckBox
     private lateinit var cbOpReturnsPicking: CheckBox
     private lateinit var cbOpConsolidation: CheckBox
 
+    // Сумма оплаты
+    private lateinit var btnMinusPrice: Button
     private lateinit var etMinPrice: EditText
+    private lateinit var btnPlusPrice: Button
+
     private lateinit var cbAutoSwipe: CheckBox
     private lateinit var btnToggleCatching: Button
 
@@ -43,6 +51,7 @@ class MainActivity : AppCompatActivity() {
 
         initViews()
         setupSpinners()
+        setupPriceButtons()
         loadSavedSettings()
 
         btnEnableAccessibility.setOnClickListener {
@@ -56,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initViews() {
+        statusIndicatorDot = findViewById(R.id.statusIndicatorDot)
         tvStatus = findViewById(R.id.tvStatus)
         btnEnableAccessibility = findViewById(R.id.btnEnableAccessibility)
         etWarehouse = findViewById(R.id.etWarehouse)
@@ -64,17 +74,20 @@ class MainActivity : AppCompatActivity() {
         spDuration = findViewById(R.id.spDuration)
         spTimeOfDay = findViewById(R.id.spTimeOfDay)
 
-        cbOpPlacement = findViewById(R.id.cbOpPlacement)
         cbOpPicking = findViewById(R.id.cbOpPicking)
+        cbOpPlacement = findViewById(R.id.cbOpPlacement)
         cbOpReceiving = findViewById(R.id.cbOpReceiving)
         cbOpPacking = findViewById(R.id.cbOpPacking)
-        cbOpSortingBig = findViewById(R.id.cbOpSortingBig)
         cbOpSortingSmall = findViewById(R.id.cbOpSortingSmall)
+        cbOpSortingBig = findViewById(R.id.cbOpSortingBig)
         cbOpReturns = findViewById(R.id.cbOpReturns)
         cbOpReturnsPicking = findViewById(R.id.cbOpReturnsPicking)
         cbOpConsolidation = findViewById(R.id.cbOpConsolidation)
 
+        btnMinusPrice = findViewById(R.id.btnMinusPrice)
         etMinPrice = findViewById(R.id.etMinPrice)
+        btnPlusPrice = findViewById(R.id.btnPlusPrice)
+
         cbAutoSwipe = findViewById(R.id.cbAutoSwipe)
         btnToggleCatching = findViewById(R.id.btnToggleCatching)
     }
@@ -86,8 +99,22 @@ class MainActivity : AppCompatActivity() {
         val durationOptions = arrayOf("Любая длительность", "12 часов (Полная)", "6 часов (Короткая)")
         spDuration.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, durationOptions)
 
-        val timeOptions = arrayOf("Любое время суток", "День (8:00 – 20:00)", "Ночь (20:00 – 8:00)")
+        val timeOptions = arrayOf("Любое время суток", "☀️ День (8:00 – 20:00)", "🌙 Ночь (20:00 – 8:00)")
         spTimeOfDay.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, timeOptions)
+    }
+
+    private fun setupPriceButtons() {
+        btnMinusPrice.setOnClickListener {
+            val current = etMinPrice.text.toString().toIntOrNull() ?: 8000
+            val next = (current - 500).coerceAtLeast(0)
+            etMinPrice.setText(next.toString())
+        }
+
+        btnPlusPrice.setOnClickListener {
+            val current = etMinPrice.text.toString().toIntOrNull() ?: 8000
+            val next = current + 500
+            etMinPrice.setText(next.toString())
+        }
     }
 
     override fun onResume() {
@@ -108,15 +135,16 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateAccessibilityStatus() {
         if (isAccessibilityServiceEnabled()) {
-            tvStatus.text = "Статус: Служба активна и готова к перехвату"
-            tvStatus.setTextColor(Color.parseColor("#00E676"))
-            btnEnableAccessibility.isEnabled = false
-            btnEnableAccessibility.text = "Разрешение активно"
+            statusIndicatorDot.setBackgroundColor(Color.parseColor("#00D26A"))
+            tvStatus.text = "Служба активна и готова к перехвату"
+            tvStatus.setTextColor(Color.parseColor("#00D26A"))
+            btnEnableAccessibility.visibility = View.GONE
         } else {
-            tvStatus.text = "Статус: Служба не включена в настройках"
-            tvStatus.setTextColor(Color.parseColor("#FF5252"))
-            btnEnableAccessibility.isEnabled = true
-            btnEnableAccessibility.text = "Включить в Спецвозможностях"
+            statusIndicatorDot.setBackgroundColor(Color.parseColor("#FF3B30"))
+            tvStatus.text = "Служба не включена в настройках"
+            tvStatus.setTextColor(Color.parseColor("#FF3B30"))
+            btnEnableAccessibility.visibility = View.VISIBLE
+            btnEnableAccessibility.text = "Предоставить разрешение"
         }
     }
 
@@ -129,12 +157,12 @@ class MainActivity : AppCompatActivity() {
             putInt("duration", spDuration.selectedItemPosition)
             putInt("timeOfDay", spTimeOfDay.selectedItemPosition)
 
-            putBoolean("opPlacement", cbOpPlacement.isChecked)
             putBoolean("opPicking", cbOpPicking.isChecked)
+            putBoolean("opPlacement", cbOpPlacement.isChecked)
             putBoolean("opReceiving", cbOpReceiving.isChecked)
             putBoolean("opPacking", cbOpPacking.isChecked)
-            putBoolean("opSortingBig", cbOpSortingBig.isChecked)
             putBoolean("opSortingSmall", cbOpSortingSmall.isChecked)
+            putBoolean("opSortingBig", cbOpSortingBig.isChecked)
             putBoolean("opReturns", cbOpReturns.isChecked)
             putBoolean("opReturnsPicking", cbOpReturnsPicking.isChecked)
             putBoolean("opConsolidation", cbOpConsolidation.isChecked)
@@ -153,12 +181,12 @@ class MainActivity : AppCompatActivity() {
         spDuration.setSelection(prefs.getInt("duration", 0))
         spTimeOfDay.setSelection(prefs.getInt("timeOfDay", 0))
 
+        cbOpPicking.isChecked = prefs.getBoolean("opPicking", true)
         cbOpPlacement.isChecked = prefs.getBoolean("opPlacement", false)
-        cbOpPicking.isChecked = prefs.getBoolean("opPicking", true) // по умолчанию Подбор
         cbOpReceiving.isChecked = prefs.getBoolean("opReceiving", false)
         cbOpPacking.isChecked = prefs.getBoolean("opPacking", false)
-        cbOpSortingBig.isChecked = prefs.getBoolean("opSortingBig", false)
         cbOpSortingSmall.isChecked = prefs.getBoolean("opSortingSmall", false)
+        cbOpSortingBig.isChecked = prefs.getBoolean("opSortingBig", false)
         cbOpReturns.isChecked = prefs.getBoolean("opReturns", false)
         cbOpReturnsPicking.isChecked = prefs.getBoolean("opReturnsPicking", false)
         cbOpConsolidation.isChecked = prefs.getBoolean("opConsolidation", false)
@@ -178,12 +206,12 @@ class MainActivity : AppCompatActivity() {
         saveCurrentSettings()
 
         val selectedOperations = mutableSetOf<String>()
-        if (cbOpPlacement.isChecked) selectedOperations.add("Размещение")
         if (cbOpPicking.isChecked) selectedOperations.add("Подбор")
+        if (cbOpPlacement.isChecked) selectedOperations.add("Размещение")
         if (cbOpReceiving.isChecked) selectedOperations.add("Приемка")
         if (cbOpPacking.isChecked) selectedOperations.add("Упаковка")
-        if (cbOpSortingBig.isChecked) selectedOperations.add("Сортировка крупного товара")
         if (cbOpSortingSmall.isChecked) selectedOperations.add("Сортировка мелкого товара")
+        if (cbOpSortingBig.isChecked) selectedOperations.add("Сортировка крупного товара")
         if (cbOpReturns.isChecked) selectedOperations.add("Возвраты")
         if (cbOpReturnsPicking.isChecked) selectedOperations.add("Подбор возвратов")
         if (cbOpConsolidation.isChecked) selectedOperations.add("Консолидация")
@@ -221,14 +249,14 @@ class MainActivity : AppCompatActivity() {
 
         if (ShiftCatcherService.isCatchingActive) {
             ShiftCatcherService.isCatchingActive = false
-            btnToggleCatching.text = "ЗАПУСТИТЬ ЛОВЛЮ"
-            btnToggleCatching.setBackgroundColor(Color.parseColor("#00C853"))
+            btnToggleCatching.text = "▶  ЗАПУСТИТЬ ЛОВЛЮ"
+            btnToggleCatching.background = ContextCompat.getDrawable(this, R.drawable.bg_button_start)
             Toast.makeText(this, "Ловля остановлена", Toast.LENGTH_SHORT).show()
         } else {
             ShiftCatcherService.isCatchingActive = true
-            btnToggleCatching.text = "ОСТАНОВИТЬ ЛОВЛЮ"
-            btnToggleCatching.setBackgroundColor(Color.parseColor("#D50000"))
-            Toast.makeText(this, "Ловля запущена! Перейдите в Ozon Job", Toast.LENGTH_LONG).show()
+            btnToggleCatching.text = "⏹  ОСТАНОВИТЬ ЛОВЛЮ"
+            btnToggleCatching.background = ContextCompat.getDrawable(this, R.drawable.bg_button_stop)
+            Toast.makeText(this, "Ловля запущена! Откройте Ozon Job", Toast.LENGTH_LONG).show()
         }
     }
 }
