@@ -21,12 +21,16 @@ class ShiftCatcherService : AccessibilityService() {
 
     private val handler = Handler(Looper.getMainLooper())
     private var lastClickTime = 0L
-    private val clickCooldownMs = 1200L
+    private val clickCooldownMs = 800L
 
-    // Маркеры повышенного тарифа (молния и огонь как на скриншотах)
+    // Время захода на экран календаря (для возврата назад, если смены нет)
+    private var calendarEnterTime = 0L
+    private val calendarMaxWaitMs = 1500L // 1.5 секунды на поиск смены в календаре перед выходом назад
+
+    // Маркеры повышенного тарифа (молния и огонь)
     private val hotRateMarkers = listOf("⚡", "🔥", "тариф +", "тариф+")
 
-    // Регулярное выражение для цены: ≈10 910 ₽, ≈8 110 ₽, ≈11 317 ₽
+    // Регулярное выражение цены (≈10 910 ₽, ≈8 110 ₽)
     private val pricePattern = Pattern.compile("(?:≈|~)?\\s*(\\d[\\d\\s]{2,6})\\s*₽", Pattern.CASE_INSENSITIVE)
 
     private val refreshRunnable = object : Runnable {
@@ -35,8 +39,8 @@ class ShiftCatcherService : AccessibilityService() {
                 val rootNode = rootInActiveWindow
                 if (rootNode != null) {
                     val fullText = collectAllText(rootNode).lowercase()
-                    // Свайпаем только если мы на первом экране (список операций)
-                    if (fullText.contains("доступные") || (fullText.contains("склады") && !fullText.contains("выберите время"))) {
+                    // Свайпаем только на главном экране операций склада
+                    if (fullText.contains("доступные") || (fullText.contains("склады") && !fullText.contains("выберите время") && !fullText.contains("можете выбрать"))) {
                         performPullToRefresh()
                     }
                     rootNode.recycle()
@@ -59,21 +63,28 @@ class ShiftCatcherService : AccessibilityService() {
         try {
             val fullScreenText = collectAllText(rootNode).lowercase()
 
-            // ШАГ 3: Шторка "Выберите время" (выбор 12 ч / 6 ч, чекбокс слота и кнопка "Записаться")
+            // 1. ШТОРКА "Выберите время" (выбор 12ч/6ч -> ГАЛОЧКА подтверждения -> Записаться)
             if (fullScreenText.contains("выберите время") || fullScreenText.contains("длительность записи")) {
                 handleTimeSlotBottomSheet(rootNode, fullScreenText)
                 return
             }
 
-            // ШАГ 2: Экран календаря («Можете выбрать несколько дней сразу»)
+            // 2. КАЛЕНДАРЬ («Можете выбрать несколько дней сразу»)
             if (fullScreenText.contains("можете выбрать несколько дней") || fullScreenText.contains("выбрать время")) {
                 handleCalendarScreen(rootNode, fullScreenText)
                 return
             }
 
-            // ШАГ 1: Главный экран склада (список: Размещение, Подбор, Приемка...)
+            // 3. СПИСОК ОПЕРАЦИЙ СКЛАДА (Размещение, Подбор, Приемка и т.д.)
             if (fullScreenText.contains("доступные") || fullScreenText.contains("тариф")) {
+                calendarEnterTime = 0L // сбрасываем таймер календаря
                 handleOperationsListScreen(rootNode)
+                return
+            }
+
+            // 4. НАВИГАЦИЯ: Если мы не на складе, перейти во вкладку «Склады» внизу
+            if (fullScreenText.contains("главная") && fullScreenText.contains("склады")) {
+                navigateToWarehousesTab(rootNode)
             }
 
         } finally {
@@ -82,7 +93,28 @@ class ShiftCatcherService : AccessibilityService() {
     }
 
     // =========================================================================
-    // ШАГ 1: Список операций склада
+    // НАВИГАЦИЯ: Переход во вкладку «Склады» в нижнем меню
+    // =========================================================================
+    private fun navigateToWarehousesTab(rootNode: AccessibilityNodeInfo) {
+        val now = System.currentTimeMillis()
+        if (now - lastClickTime < 1500L) return
+
+        val warehouseTabNodes = rootNode.findAccessibilityNodeInfosByText("Склады")
+        for (node in warehouseTabNodes) {
+            if (node.isVisibleToUser) {
+                Log.i(TAG, "Переходим в раздел 'Склады' в нижнем меню...")
+                if (clickNodeOrParent(node)) {
+                    lastClickTime = now
+                }
+                node.recycle()
+                return
+            }
+            node.recycle()
+        }
+    }
+
+    // =========================================================================
+    // ШАГ 1: Список процессов на складе (Подбор, Размещение и т.д.)
     // =========================================================================
     private fun handleOperationsListScreen(rootNode: AccessibilityNodeInfo) {
         val now = System.currentTimeMillis()
@@ -98,10 +130,11 @@ class ShiftCatcherService : AccessibilityService() {
 
         val targetCard = findMatchingOperationCard(rootNode)
         if (targetCard != null) {
-            Log.i(TAG, "ШАГ 1: Найдена операция под фильтры. Кликаем по карточке...")
+            Log.i(TAG, "ШАГ 1: Нашли подходящий процесс. Заходим внутрь...")
             val clicked = clickNodeOrParent(targetCard)
             if (clicked) {
                 lastClickTime = now
+                calendarEnterTime = now // фиксируем время входа в процесс
             }
             targetCard.recycle()
         }
@@ -143,7 +176,7 @@ class ShiftCatcherService : AccessibilityService() {
             if (!matchesOp) return false
         }
 
-        // Проверка дат в превью карточки (Сегодня, Завтра)
+        // Проверка дат в карточке (Сегодня, Завтра)
         when (config.dateChoice) {
             TargetDateChoice.TODAY -> if (!lower.contains("сегодня")) return false
             TargetDateChoice.TOMORROW -> if (!lower.contains("завтра")) return false
@@ -172,17 +205,19 @@ class ShiftCatcherService : AccessibilityService() {
     }
 
     // =========================================================================
-    // ШАГ 2: Календарь («Можете выбрать несколько дней сразу»)
+    // ШАГ 2: Календарь (Поиск даты -> «Выбрать время» ИЛИ выход назад, если смены нет)
     // =========================================================================
     private fun handleCalendarScreen(rootNode: AccessibilityNodeInfo, fullText: String) {
         val now = System.currentTimeMillis()
-        if (now - lastClickTime < clickCooldownMs) return
+        if (calendarEnterTime == 0L) {
+            calendarEnterTime = now
+        }
 
-        // 1. Если синяя кнопка "Выбрать время" уже активна внизу — сразу жмём её!
+        // 1. Если синяя кнопка "Выбрать время" уже активна внизу — моментально жмём её!
         val selectTimeNodes = rootNode.findAccessibilityNodeInfosByText("Выбрать время")
         for (node in selectTimeNodes) {
             if (node.isVisibleToUser) {
-                Log.i(TAG, "ШАГ 2: Нажата синяя кнопка 'Выбрать время'")
+                Log.i(TAG, "ШАГ 2: Дата уже выбрана, нажимаем 'Выбрать время'")
                 clickNodeOrParent(node)
                 lastClickTime = now
                 node.recycle()
@@ -191,7 +226,7 @@ class ShiftCatcherService : AccessibilityService() {
             node.recycle()
         }
 
-        // 2. Если дата ещё не выбрана, находим нужное число в календаре
+        // 2. Ищем целевое число в календаре
         val calendar = Calendar.getInstance()
         val targetDayNumber: Int = when (filterConfig.dateChoice) {
             TargetDateChoice.TODAY -> calendar.get(Calendar.DAY_OF_MONTH)
@@ -207,24 +242,52 @@ class ShiftCatcherService : AccessibilityService() {
 
         val dayStr = targetDayNumber.toString()
         val dayNodes = rootNode.findAccessibilityNodeInfosByText(dayStr)
+        var dayClicked = false
         for (node in dayNodes) {
             if (node.text?.toString()?.trim() == dayStr && node.isVisibleToUser) {
-                Log.i(TAG, "ШАГ 2: Выбираем число $dayStr в календаре...")
-                clickNodeOrParent(node)
-                lastClickTime = now
+                Log.i(TAG, "ШАГ 2: Нажимаем число $dayStr в календаре...")
+                if (clickNodeOrParent(node)) {
+                    lastClickTime = now
+                    dayClicked = true
+                }
+                node.recycle()
+                break
+            }
+            node.recycle()
+        }
+
+        // 3. ЕСЛИ СМЕНЫ НЕТ: если прошло больше 1.5 сек и смену не удалось выбрать, ВЫХОДИМ НАЗАД
+        if (!dayClicked && (now - calendarEnterTime > calendarMaxWaitMs)) {
+            Log.i(TAG, "Подходящей смены в этом процессе нет. Нажимаем НАЗАД и заходим заново...")
+            goBack(rootNode)
+            calendarEnterTime = 0L
+            lastClickTime = now
+        }
+    }
+
+    /**
+     * Возврат на предыдущую страницу (кнопка стрелки назад или системный жест Back)
+     */
+    private fun goBack(rootNode: AccessibilityNodeInfo) {
+        // Пробуем нажать на иконку стрелки назад в шапке
+        val backNodes = rootNode.findAccessibilityNodeInfosByText("<")
+        for (node in backNodes) {
+            if (node.isVisibleToUser && clickNodeOrParent(node)) {
                 node.recycle()
                 return
             }
             node.recycle()
         }
+        // Если стрелки в дереве нет, вызываем системную команду Android Назад
+        performGlobalAction(GLOBAL_ACTION_BACK)
     }
 
     // =========================================================================
-    // ШАГ 3: Шторка "Выберите время"
+    // ШАГ 3: Шторка "Выберите время" (Длительность -> ГАЛОЧКА -> Записаться)
     // =========================================================================
     private fun handleTimeSlotBottomSheet(rootNode: AccessibilityNodeInfo, fullText: String) {
         val now = System.currentTimeMillis()
-        if (now - lastClickTime < 600L) return // Меньшая пауза на шторке для скорости
+        if (now - lastClickTime < 400L) return // быстрая реакция на шторке
 
         // 1. Выбор длительности (12 часов / 6 часов)
         when (filterConfig.duration) {
@@ -233,39 +296,69 @@ class ShiftCatcherService : AccessibilityService() {
             ShiftDuration.ANY -> {}
         }
 
-        // 2. Выбор времени суток (День: 8:00 – 20:00 / Ночь: 20:00 – 8:00)
-        // Карточка слота содержит время и чекбокс, который надо нажать
-        val targetTimeKeyword = when (filterConfig.timeOfDay) {
-            ShiftTimeOfDay.DAY -> "8:00"
-            ShiftTimeOfDay.NIGHT -> "20:00"
-            ShiftTimeOfDay.ANY -> "8:00" // по умолчанию выбираем первый доступный слот
-        }
+        // 2. ГАЛОЧКА ПОДТВЕРЖДЕНИЯ ЗАПИСИ (Чекбокс в карточке времени 8:00 - 20:00)
+        checkSlotConfirmationCheckbox(rootNode)
 
-        // Ищем карточку с нужным временем и кликаем на неё (или на чекбокс внутри)
-        val timeNodes = rootNode.findAccessibilityNodeInfosByText(targetTimeKeyword)
-        for (node in timeNodes) {
-            if (node.isVisibleToUser) {
-                clickNodeOrParent(node)
-                node.recycle()
-                break
-            }
-            node.recycle()
-        }
-
-        // 3. Финальный клик по кнопке "Записаться"
+        // 3. ФИНАЛЬНАЯ КНОПКА: "Записаться"
         val bookNodes = rootNode.findAccessibilityNodeInfosByText("Записаться")
         for (node in bookNodes) {
             if (node.isVisibleToUser) {
                 Log.i(TAG, "ФИНАЛ: Нажимаем кнопку 'Записаться'! Смена забронирована.")
                 val success = clickNodeOrParent(node)
                 if (success) {
-                    lastClickTime = now + 1000L // увеличиваем паузу после взятия
+                    lastClickTime = now + 1500L
                 }
                 node.recycle()
                 return
             }
             node.recycle()
         }
+    }
+
+    /**
+     * Поиск и нажатие на чекбокс (галочку) подтверждения выбранного слота времени
+     */
+    private fun checkSlotConfirmationCheckbox(rootNode: AccessibilityNodeInfo) {
+        // 1. Сначала ищем чекбокс среди узлов
+        val checkableNodes = findCheckableNodes(rootNode)
+        for (cb in checkableNodes) {
+            if (cb.isVisibleToUser && !cb.isChecked) {
+                Log.i(TAG, "Нажимаем на чекбокс (галочку) подтверждения записи!")
+                clickNodeOrParent(cb)
+                cb.recycle()
+                return
+            }
+            cb.recycle()
+        }
+
+        // 2. Если чекбокс напрямую не размечен как CheckBox, кликаем по самой строке со временем (8:00 - 20:00)
+        val targetTime = when (filterConfig.timeOfDay) {
+            ShiftTimeOfDay.DAY -> "8:00"
+            ShiftTimeOfDay.NIGHT -> "20:00"
+            ShiftTimeOfDay.ANY -> "8:00"
+        }
+        val timeNodes = rootNode.findAccessibilityNodeInfosByText(targetTime)
+        for (node in timeNodes) {
+            if (node.isVisibleToUser) {
+                Log.i(TAG, "Кликаем по слоту времени '$targetTime' для активации галочки...")
+                clickNodeOrParent(node)
+                node.recycle()
+                return
+            }
+            node.recycle()
+        }
+    }
+
+    private fun findCheckableNodes(node: AccessibilityNodeInfo): List<AccessibilityNodeInfo> {
+        val list = mutableListOf<AccessibilityNodeInfo>()
+        if (node.isCheckable || node.className?.contains("CheckBox") == true || node.className?.contains("CompoundButton") == true) {
+            list.add(node)
+        }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            list.addAll(findCheckableNodes(child))
+        }
+        return list
     }
 
     private fun clickByExactText(rootNode: AccessibilityNodeInfo, text: String): Boolean {
