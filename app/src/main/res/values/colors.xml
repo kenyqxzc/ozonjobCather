@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Основные цвета темы -->
+    <color name="bg_main">#0E1013</color>
+    <color name="bg_card">#16181D</color>
+    <color name="bg_card_elevated">#1E2128</color>
+    <color name="bg_card_border">#2A2E39</color>
+    
+    <!-- Акцентные цвета -->
+    <color name="accent_blue">#005BFF</color>
+    <color name="accent_blue_light">#2979FF</color>
+    <color name="accent_green">#00D26A</color>
+    <color name="accent_green_glow">#1A00D26A</color>
+    <color name="accent_red">#FF3B30</color>
+    <color name="accent_orange">#FF9500</color>
+    <color name="accent_gold">#FFD600</color>
+    
+    <!-- Текстовые цвета -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#9DA2B3</color>
+    <color name="text_muted">#606575</color>
+    
+    <!-- Цвета фишек и переключателей -->
+    <color name="chip_selected_bg">#005BFF</color>
+    <color name="chip_unselected_bg">#232630</color>
+    <color name="chip_unselected_stroke">#323745</color>
+</resources>
